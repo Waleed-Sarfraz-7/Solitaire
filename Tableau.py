@@ -80,13 +80,16 @@ class Tableau:
                 i = 0
                 x, y = self.column_position[col_index]
                 y_offset = 30
+                clicked_card = None
                 while current:
                     card = current.Data
                     card_rect = pygame.Rect(x, y + i * y_offset, card.Image.get_width(), card.Image.get_height())
                     if card.FaceUp and card_rect.collidepoint(mouse_x, mouse_y):
-                        return col_index, card
+                        clicked_card = card
                     current = current.Next
                     i += 1
+                if clicked_card:
+                    return col_index, clicked_card
         return None, None
 
     def move_card(self, from_col_index, to_col_index, card):

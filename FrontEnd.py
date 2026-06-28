@@ -185,11 +185,122 @@ def restore_game_state(state, tableau, foundations, stockpiles, card_registry):
     return state['score'], state['move']
 
 
-def Game():
-    global move, score, start_time
+def create_gradient_surface(width, height, top_color, bottom_color):
+    grad_surf = pygame.Surface((1, height))
+    for y in range(height):
+        t = y / height
+        r = int(top_color[0] * (1 - t) + bottom_color[0] * t)
+        g = int(top_color[1] * (1 - t) + bottom_color[1] * t)
+        b = int(top_color[2] * (1 - t) + bottom_color[2] * t)
+        grad_surf.set_at((0, y), (r, g, b))
+    return pygame.transform.scale(grad_surf, (width, height))
+
+
+def StartScreen(screen):
     width, height = 1200, 650
-    screen = pygame.display.set_mode((width, height))
-    pygame.display.set_caption('Solitaire Game')
+    bg_gradient = create_gradient_surface(width, height, (24, 88, 48), (10, 36, 20))
+    
+    play_base = pygame.Rect(450, 250, 300, 55)
+    diff_base = pygame.Rect(450, 335, 300, 55)
+    exit_base = pygame.Rect(450, 420, 300, 55)
+    
+    difficulties = ["Easy", "Medium", "Hard"]
+    diff_idx = 0
+    
+    font = pygame.font.SysFont('Times New Roman', 24, bold=True)
+    title_font = pygame.font.SysFont('Times New Roman', 72, bold=True)
+    subtitle_font = pygame.font.SysFont('Times New Roman', 20, italic=True)
+    
+    running = True
+    while running:
+        screen.blit(bg_gradient, (0, 0))
+        
+        # Title Shadow
+        title_shadow = title_font.render("K L O N D I K E   S O L I T A I R E", True, (5, 20, 10))
+        screen.blit(title_shadow, title_shadow.get_rect(center=(600 + 4, 130 + 4)))
+        
+        # Title
+        title_surf = title_font.render("K L O N D I K E   S O L I T A I R E", True, (255, 215, 0))
+        screen.blit(title_surf, title_surf.get_rect(center=(600, 130)))
+        
+        # Subtitle
+        sub_text = subtitle_font.render("A Classic Card Game Experience", True, (200, 220, 200))
+        screen.blit(sub_text, sub_text.get_rect(center=(600, 185)))
+        
+        mouse_pos = pygame.mouse.get_pos()
+        
+        is_play_hovered = play_base.collidepoint(mouse_pos)
+        play_rect = play_base.inflate(12, 6) if is_play_hovered else play_base
+        
+        is_diff_hovered = diff_base.collidepoint(mouse_pos)
+        diff_rect = diff_base.inflate(12, 6) if is_diff_hovered else diff_base
+        
+        is_exit_hovered = exit_base.collidepoint(mouse_pos)
+        exit_rect = exit_base.inflate(12, 6) if is_exit_hovered else exit_base
+        
+        for r in [play_rect, diff_rect, exit_rect]:
+            shadow_rect = r.copy()
+            shadow_rect.x += 4
+            shadow_rect.y += 4
+            pygame.draw.rect(screen, (5, 20, 10), shadow_rect, border_radius=12)
+            
+        play_bg = (40, 55, 48) if is_play_hovered else (30, 42, 36)
+        play_border = (255, 215, 0) if is_play_hovered else (150, 170, 155)
+        pygame.draw.rect(screen, play_bg, play_rect, border_radius=12)
+        pygame.draw.rect(screen, play_border, play_rect, width=3 if is_play_hovered else 2, border_radius=12)
+        
+        play_txt_surf = font.render("PLAY", True, (245, 245, 240))
+        screen.blit(play_txt_surf, play_txt_surf.get_rect(center=play_rect.center))
+        
+        diff_bg = (40, 55, 48) if is_diff_hovered else (30, 42, 36)
+        diff_border = (255, 215, 0) if is_diff_hovered else (150, 170, 155)
+        pygame.draw.rect(screen, diff_bg, diff_rect, border_radius=12)
+        pygame.draw.rect(screen, diff_border, diff_rect, width=3 if is_diff_hovered else 2, border_radius=12)
+        
+        difficulty = difficulties[diff_idx]
+        diff_colors = {
+            "Easy": (100, 220, 100),
+            "Medium": (255, 180, 50),
+            "Hard": (255, 100, 100)
+        }
+        
+        diff_label = font.render("DIFFICULTY: ", True, (245, 245, 240))
+        val_label = font.render(difficulty.upper(), True, diff_colors[difficulty])
+        
+        total_w = diff_label.get_width() + val_label.get_width()
+        start_x = diff_rect.centerx - total_w // 2
+        screen.blit(diff_label, (start_x, diff_rect.centery - diff_label.get_height() // 2))
+        screen.blit(val_label, (start_x + diff_label.get_width(), diff_rect.centery - val_label.get_height() // 2))
+        
+        exit_bg = (40, 55, 48) if is_exit_hovered else (30, 42, 36)
+        exit_border = (255, 215, 0) if is_exit_hovered else (150, 170, 155)
+        pygame.draw.rect(screen, exit_bg, exit_rect, border_radius=12)
+        pygame.draw.rect(screen, exit_border, exit_rect, width=3 if is_exit_hovered else 2, border_radius=12)
+        
+        exit_txt_surf = font.render("EXIT", True, (245, 245, 240))
+        screen.blit(exit_txt_surf, exit_txt_surf.get_rect(center=exit_rect.center))
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if play_rect.collidepoint(event.pos):
+                    return difficulty
+                elif diff_rect.collidepoint(event.pos):
+                    diff_idx = (diff_idx + 1) % 3
+                elif exit_rect.collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
+
+
+def Game(screen, difficulty="Easy"):
+    global move, score, start_time
+    move = 0
+    score = 0
+    start_time = time.time()
     foundation_positions = [((350 + i * 100), 20) for i in range(4)]
     foundations = [Foundation(suit) for suit in ['Heart', 'Diamond', 'Clubs', 'Spades']]
     column_positions = [(50 + i * 100, 180) for i in range(7)]
@@ -204,9 +315,10 @@ def Game():
     dragging = False
     dragged_card = None 
 
-    # Hint and Undo variables
-    hint_button_rect = pygame.Rect(780, 20, 100, 40)
-    undo_button_rect = pygame.Rect(890, 20, 100, 40)
+    # Toolbar variables
+    menu_button_rect = pygame.Rect(740, 20, 80, 40)
+    hint_button_rect = pygame.Rect(830, 20, 80, 40)
+    undo_button_rect = pygame.Rect(920, 20, 80, 40)
     undo_stack = UndoStack()
     active_hints = []
     current_hint_idx = 0
@@ -222,19 +334,31 @@ def Game():
         tableau.render_tableau(screen)
         draw_timer_and_score(screen)
 
-        # Draw Hint Button
+        # Draw Menu Button
         mouse_pos = pygame.mouse.get_pos()
-        button_color = (200, 200, 200) # Default gray
-        if hint_button_rect.collidepoint(mouse_pos):
-            button_color = (230, 230, 230) # Hover lighter gray
+        menu_button_color = (200, 200, 200) # Default gray
+        if menu_button_rect.collidepoint(mouse_pos):
+            menu_button_color = (230, 230, 230) # Hover lighter gray
             
-        pygame.draw.rect(screen, button_color, hint_button_rect, border_radius=8)
+        pygame.draw.rect(screen, menu_button_color, menu_button_rect, border_radius=8)
+        pygame.draw.rect(screen, (100, 100, 100), menu_button_rect, width=2, border_radius=8)
+        
+        btn_font = pygame.font.SysFont('Times New Roman', 18, bold=True)
+        menu_text = btn_font.render("MENU", True, (50, 50, 50))
+        menu_rect = menu_text.get_rect(center=menu_button_rect.center)
+        screen.blit(menu_text, menu_rect)
+
+        # Draw Hint Button
+        hint_button_color = (200, 200, 200) # Default gray
+        if hint_button_rect.collidepoint(mouse_pos):
+            hint_button_color = (230, 230, 230) # Hover lighter gray
+            
+        pygame.draw.rect(screen, hint_button_color, hint_button_rect, border_radius=8)
         pygame.draw.rect(screen, (100, 100, 100), hint_button_rect, width=2, border_radius=8)
         
-        btn_font = pygame.font.SysFont('Times New Roman', 20, bold=True)
-        btn_text = btn_font.render("HINT", True, (50, 50, 50))
-        btn_rect = btn_text.get_rect(center=hint_button_rect.center)
-        screen.blit(btn_text, btn_rect)
+        hint_text = btn_font.render("HINT", True, (50, 50, 50))
+        hint_rect = hint_text.get_rect(center=hint_button_rect.center)
+        screen.blit(hint_text, hint_rect)
 
         # Draw Undo Button
         undo_button_color = (200, 200, 200) # Default gray
@@ -252,7 +376,7 @@ def Game():
         if active_hint:
             desc_font = pygame.font.SysFont('Times New Roman', 18, italic=True)
             desc_surface = desc_font.render(active_hint['description'], True, (255, 255, 150))
-            desc_rect = desc_surface.get_rect(center=((hint_button_rect.centerx + undo_button_rect.centerx) // 2, hint_button_rect.bottom + 20))
+            desc_rect = desc_surface.get_rect(center=((menu_button_rect.centerx + undo_button_rect.centerx) // 2, hint_button_rect.bottom + 20))
             screen.blit(desc_surface, desc_rect)
             
             if 'src_pos' in active_hint and 'dst_pos' in active_hint:
@@ -289,29 +413,18 @@ def Game():
         if check_win(foundations):
             result = display_win_screen(screen)
             if result == "restart":
-                # Reset the game
-                move = 0
-                score = 0
-                start_time = time.time()
-                foundations = [Foundation(suit) for suit in ['Heart', 'Diamond', 'Clubs', 'Spades']]
-                tableau = Tableau(column_positions)
-                deck = Deck()
-                card_registry = {(card.Suits, card.Ranks): card for card in deck.Cards}
-                deck = tableau.InitializeTableau(deck)
-                stockpiles = Stockpile(deck)
-                active_hint = None
-                active_hints = []
-                current_hint_idx = 0
-                undo_stack.clear()
+                return "restart"
             else:
-                break
+                return "exit"
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = event.pos
-                if hint_button_rect.collidepoint(mouse_x, mouse_y):
+                if menu_button_rect.collidepoint(mouse_x, mouse_y):
+                    return "restart"
+                elif hint_button_rect.collidepoint(mouse_x, mouse_y):
                     # Generate/cycle hints
                     if not active_hints:
                         active_hints = get_all_hints(tableau, foundations, stockpiles, foundation_positions)
@@ -341,7 +454,24 @@ def Game():
                     if stockpiles.detect_stockpile_click(event) == "StockPile":
                         if stockpiles.Cards or stockpiles.DrawnCards:
                             state_snapshot = capture_game_state(tableau, foundations, stockpiles, score, move)
-                            stockpiles.DrawOneCard()
+                            draw_max = 1
+                            if difficulty == "Hard":
+                                draw_max = 3
+                            elif difficulty == "Medium":
+                                draw_max = 2
+                                
+                            if draw_max > 1:
+                                if not stockpiles.Cards and stockpiles.DrawnCards:
+                                    stockpiles.DrawOneCard()
+                                    for _ in range(draw_max - 1):
+                                        if stockpiles.Cards:
+                                            stockpiles.DrawOneCard()
+                                else:
+                                    for _ in range(draw_max):
+                                        if stockpiles.Cards:
+                                            stockpiles.DrawOneCard()
+                            else:
+                                stockpiles.DrawOneCard()
                             undo_stack.push(state_snapshot)
                     else:
                         dragged_card = stockpiles.start_drag(event, stockpiles)
@@ -422,8 +552,19 @@ def Game():
             stockpiles.drag_card(screen, dragged_card, mouse_x, mouse_y)
 
         pygame.display.flip()
+    return "exit"
 
 if __name__ == "__main__":
-    Game()
+    pygame.init()
+    width, height = 1200, 650
+    screen = pygame.display.set_mode((width, height))
+    pygame.display.set_caption('Solitaire Game')
+    
+    while True:
+        difficulty = StartScreen(screen)
+        result = Game(screen, difficulty)
+        if result != "restart":
+            break
+            
     pygame.quit()
     sys.exit()

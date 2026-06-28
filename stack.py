@@ -11,6 +11,15 @@ class Stack:
     def MakeStackEmpty(self):
         self.Head=None
         return
+    def lengthofstack(self, pile):
+        temp=pile.Head
+        if temp==None:
+            return 0
+        i=0
+        while temp.Next is not None:
+            temp=temp.Next
+            i+=1
+        return i
     def Push(self, Data):
         NewNode = Node(Data)
         if self.Head is None:
@@ -43,47 +52,40 @@ class Stack:
         return count
     def get_last(self):
         if self.IsEmpty():
-            return None  # Stack is empty
+            return None
         current = self.Head
-        while current.Next:  # Traverse until the last node (Next is None)
+        while current.Next: 
             current = current.Next
-        return current.Data  # Return the Data (card) of the last node
+        return current.Data
     def cut_off_at(self, node):
         """Cuts off the linked list at the given node, effectively removing all nodes after it."""
         if not node:
-            return  # If the node is None, do nothing
+            return
         current = self.Head
         if self.Head.Data==node.Data:
             self.Head=None
-        
-        # Traverse the list to find the node just before the given node
         while current and current.Next != node:
             current = current.Next
-        # If the node is found, truncate the list after this node
         if current and current.Next == node:
             current.Next = None
 
     def RemoveFrom(self, card):
-        """Removes the specified card and all cards after it."""
         current = self.Head
         removed_stack = Stack()
         while current and current.Data != card:
             current = current.Next
         if current:
-            removed_stack.Head = current  # Set the head of the removed stack
-            self.cut_off_at(current)  # Assuming you have implemented cut_off_at correctly
+            removed_stack.Head = current
+            self.cut_off_at(current) 
         return removed_stack
 
 
     def PushStack(self, other_stack):
         if not other_stack.Head:
-            return  # Nothing to push if the other stack is empty
-
+            return
         if not self.Head:
-            # If the current stack is empty, just set its head to the other stack's head
             self.Head = other_stack.Head
         else:
-            # Traverse to the end of the current stack and link it to the new stack
             current = self.Head
             while current.Next:
                 current = current.Next
